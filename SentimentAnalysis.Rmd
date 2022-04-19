@@ -1,0 +1,231 @@
+---
+title: "Reddit Sentiment And Stock"
+output: ioslides_presentation
+runtime: shiny
+---
+```{R include=FALSE}
+library('sentimentr')
+
+# Read the data
+in_data <- read.csv("reddit_wsb.csv")
+in_data$timestamp <- strptime(in_data$timestamp,format = "%Y-%m-%d %H:%M:%S") # Covnert Date Time Column
+
+# calculate Sentiment on the reddit post titles
+
+sentences <- get_sentences(in_data$title)
+single_entences = c()
+for (s in sentences){
+  single_entences<-append(single_entences,s[[1]][1])
+}
+in_data$new_title <- single_entences
+title_sentiment <- sentiment(in_data$new_title)
+
+# Store Sentiment
+in_data$title_sentiment<-title_sentiment$sentiment
+
+#Get Daily Sample
+in_data$Date <- as.Date(in_data$timestamp)
+
+agregated_data <- aggregate(title_sentiment ~ Date,in_data,mean)
+
+
+
+
+```
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Content
+
+- Introduction
+- Sentiment Analysis
+- Reddit WallStreetBets Dataset
+- GameStop Share Dataset
+- Sentiment and Share
+
+## Introduction
+
+There had been instances where an online discussion group can impact the real world. For example, the reddit group had raised the stock price of the “game stop” by asking community to buy share. Large hedge fund companies who had taken the short position has bearer the large sum of loss. Like wise there are studies which shows correlation between the crypto price and the Elon musk’s tweet. So, with the help of this study, sentiment of the reddit discussion is correlated with stock market movement. This information can be used to find out the factor which are affecting the stock market abrupt movement. These abrupt movement are very hard to predict, and many people often must suffer by losing large sum. Sometimes these abrupt changes are for very short duration.
+
+## Sentiment Analysis
+
+- Extracts the public opinion 
+- Based on type of word used (lexicon based)
+- From the movie/Hottel reviews and rating(machine learning based)
+- "sentimentr" library is used to calculate the sentiment of the reddit post titles
+-library 
+
+## Sentiment Distribution
+```{r read and process data}
+
+```
+
+```{r}
+inputPanel(
+sliderInput("start_date",label = "Start Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-01-28"),
+                          timeFormat="%Y-%m-%d"),
+sliderInput("end_date",label = "End Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-08-30"),
+                          timeFormat="%Y-%m-%d")
+)
+
+
+renderPlot({
+  
+  hist(in_data[in_data$timestamp>=format(input$start_date, format = "%Y-%m-%d")  & in_data$timestamp<=format(input$end_date, format = "%Y-%m-%d"),]$title_sentiment,
+       xlab="Sentiment",main="Distribution of Sentiment")
+}
+)
+
+```
+
+
+## Sentiment Overtime
+
+```{r eruptions}
+inputPanel(
+sliderInput("start_date_1",label = "Start Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-01-28"),
+                          timeFormat="%Y-%m-%d"),
+sliderInput("end_date_1",label = "End Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-08-30"),
+                          timeFormat="%Y-%m-%d")
+)
+
+
+renderPlot({
+  
+  plot(in_data[in_data$timestamp>=format(input$start_date_1, format = "%Y-%m-%d")  & in_data$timestamp<=format(input$end_date_1, format = "%Y-%m-%d"),]$title_sentiment,
+       xlab="Time",ylab="sentiment",main="Sentiment Overtime")
+}
+)
+```
+
+## Daily Average Sentiments
+
+```{r}
+inputPanel(
+sliderInput("start_date_2",label = "Start Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-01-28"),
+                          timeFormat="%Y-%m-%d"),
+sliderInput("end_date_2",label = "End Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-08-30"),
+                          timeFormat="%Y-%m-%d")
+)
+
+renderPlot({
+  
+  plot(agregated_data[agregated_data$Date>=input$start_date_2 & agregated_data$Date<=input$end_date_2,]$title_sentiment,
+       xlab="Time",ylab="sentiment",main="Agregated Sentiments")
+}
+)
+
+```
+
+
+
+## Game Stop
+
+- It's an American electronic Retail Company
+- Stock is listed in New York Stock Exchange
+- Market Cap: $12.72B
+
+## Stock price Overview
+```{r include=FALSE}
+library(tidyquant)
+
+options("getSymbols.warning4.0"=FALSE)
+options("getSymbols.yahoo.warning"=FALSE)
+getSymbols("GME", from = '2021-01-01',
+           to = "2021-09-01",warnings = FALSE,
+           auto.assign = TRUE)
+iv = index(GME)
+GME<-data.frame(GME)
+
+date_col <- c()
+
+for(i in iv){
+  date_col <- append(date_col,i)
+}
+
+GME$GME.Date <- as.Date(date_col)
+
+new_merged <-merge(agregated_data,GME,by.x = "Date",by.y = "GME.Date")
+print(new_merged)
+```
+
+
+```{r GME}
+
+renderPlot({
+  plot(GME$GME.Open,main="Stock Price of Game Stop")
+})
+```
+
+## Price and Sentiments
+
+```{r}
+
+inputPanel(
+sliderInput("start_date_3",label = "Start Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-01-28"),
+                          timeFormat="%Y-%m-%d"),
+sliderInput("end_date_3",label = "End Date",
+           min = as.Date("2021-01-28","%Y-%m-%d"),
+           max = as.Date("2021-08-30","%Y-%m-%d"),
+           value=as.Date("2021-08-30"),
+                          timeFormat="%Y-%m-%d")
+)
+renderPlot({
+  plot(GME[GME$GME.Date>=input$start_date_3 & GME$GME.Date<=input$end_date_3,]$GME.Date,
+        GME[GME$GME.Date>=input$start_date_3 & GME$GME.Date<=input$end_date_3,]$GME.Open,type="l"
+       )
+  lines(agregated_data[agregated_data$Date>=input$start_date_3 & agregated_data$Date<=input$end_date_3,]$Date,
+        agregated_data[agregated_data$Date>=input$start_date_3 & agregated_data$Date<=input$end_date_3,]$title_sentiment)
+  legend(1, 25, legend=c('Stock Open Price', 'Sentiment')
+      , lty=1)
+})
+```
+
+## Scatter Plot
+
+```{r}
+renderPlot({
+  plot(new_merged$title_sentiment~new_merged$GME.Open)
+})
+
+```
+## Correlation
+```{r}
+print("Correlation:")
+print(cor(new_merged$title_sentiment,new_merged$GME.Open))
+```
+
+##  Liner Regression
+```{r}
+lm_d <-lm(GME.Open ~ title_sentiment,data=new_merged)
+print(summary(lm_d))
+
+```
+
+
+
